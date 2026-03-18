@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>StudyAI - AI-Powered Study Tool</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;600;700;800;900&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <div class="grid-bg"></div>
+    <div class="container">
+        <header>
+            <h1 class="glow-text">Study<span class="accent">AI</span></h1>
+            <p class="subtitle">AI-Powered Study Assistant</p>
+        </header>
+
+        <div class="input-section">
+            <div class="cards-container">
+                <div class="card" id="pdf-card">
+                    <h2>📄 Upload PDF</h2>
+                    <div class="drop-zone" id="drop-zone">
+                        <div class="drop-icon">📁</div>
+                        <p>Drag & drop PDF here</p>
+                        <p class="or">or</p>
+                        <button type="button" class="browse-btn" onclick="document.getElementById('pdf-input').click()">Browse Files</button>
+                        <input type="file" id="pdf-input" accept=".pdf" hidden>
+                    </div>
+                    <div class="file-info" id="file-info" style="display: none;">
+                        <span class="file-name" id="file-name"></span>
+                        <button type="button" class="remove-file" onclick="removeFile()">✕</button>
+                    </div>
+                </div>
+
+                <div class="card" id="youtube-card">
+                    <h2>🎬 YouTube Video</h2>
+                    <div class="input-group">
+                        <input type="text" id="youtube-url" placeholder="Paste YouTube URL here...">
+                        <div class="url-preview" id="url-preview"></div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="features-section">
+                <h2>Select Features</h2>
+                <div class="features-grid">
+                    <label class="feature-btn">
+                        <input type="checkbox" name="features" value="summary">
+                        <span class="feature-content">📝 Summary</span>
+                    </label>
+                    <label class="feature-btn">
+                        <input type="checkbox" name="features" value="notes">
+                        <span class="feature-content">📒 Notes</span>
+                    </label>
+                    <label class="feature-btn">
+                        <input type="checkbox" name="features" value="quiz">
+                        <span class="feature-content">❓ Quiz</span>
+                    </label>
+                    <label class="feature-btn">
+                        <input type="checkbox" name="features" value="flashcards">
+                        <span class="feature-content">🃏 Flashcards</span>
+                    </label>
+                    <label class="feature-btn">
+                        <input type="checkbox" name="features" value="ppt">
+                        <span class="feature-content">📊 PPT Outline</span>
+                    </label>
+                    <label class="feature-btn">
+                        <input type="checkbox" name="features" value="concepts">
+                        <span class="feature-content">🔍 Key Concepts</span>
+                    </label>
+                </div>
+            </div>
+
+            <button type="button" class="generate-btn" id="generate-btn" onclick="generateContent()">
+                Generate Study Materials
+            </button>
+        </div>
+
+        <div class="loading-overlay" id="loading" style="display: none;">
+            <div class="spinner"></div>
+            <p>AI is generating your study materials...</p>
+        </div>
+
+        <div class="error-message" id="error-message" style="display: none;"></div>
+    </div>
+
+    <script src="{{ url_for('static', filename='script.js') }}"></script>
+</body>
+</html>

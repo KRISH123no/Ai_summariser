@@ -1,0 +1,333 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>StudyAI - Results</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;600;700;800;900&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <div class="grid-bg"></div>
+    <div class="container">
+        <header>
+            <h1 class="glow-text">Study<span class="accent">AI</span> Results</h1>
+            <button class="back-btn" onclick="window.location.href='/'">← Back to Home</button>
+        </header>
+
+        <div class="tabs" id="tabs">
+            <button class="tab-btn" data-tab="summary" {% if 'summary' not in features %}style="display:none"{% endif %}>📝 Summary</button>
+            <button class="tab-btn" data-tab="notes" {% if 'notes' not in features %}style="display:none"{% endif %}>📒 Notes</button>
+            <button class="tab-btn" data-tab="quiz" {% if 'quiz' not in features %}style="display:none"{% endif %}>❓ Quiz</button>
+            <button class="tab-btn" data-tab="flashcards" {% if 'flashcards' not in features %}style="display:none"{% endif %}>🃏 Flashcards</button>
+            <button class="tab-btn" data-tab="ppt" {% if 'ppt' not in features %}style="display:none"{% endif %}>📊 PPT</button>
+            <button class="tab-btn" data-tab="concepts" {% if 'concepts' not in features %}style="display:none"{% endif %}>🔍 Concepts</button>
+        </div>
+
+{% set active_feature = features[0] if features else '' %}
+{% set active_summary = active_feature == 'summary' %}
+{% set active_notes = active_feature == 'notes' %}
+{% set active_quiz = active_feature == 'quiz' %}
+{% set active_flashcards = active_feature == 'flashcards' %}
+{% set active_ppt = active_feature == 'ppt' %}
+{% set active_concepts = active_feature == 'concepts' %}
+
+        <div class="tab-content">
+            <div class="tab-pane{% if active_summary %} active{% endif %}" id="summary-pane">
+                <div class="content-header">
+                    <h2>Summary</h2>
+                    <div class="action-buttons">
+                        <button class="action-btn" onclick="copyContent('summary')">📋 Copy</button>
+                        <button class="action-btn" onclick="downloadContent('summary')">💾 Download TXT</button>
+                    </div>
+                </div>
+                <div class="content-box" id="summary-content">{% if results.summary %}{{ results.summary }}{% else %}No summary generated{% endif %}</div>
+            </div>
+
+            <div class="tab-pane{% if active_notes %} active{% endif %}" id="notes-pane">
+                <div class="content-header">
+                    <h2>Notes</h2>
+                    <div class="action-buttons">
+                        <button class="action-btn" onclick="copyContent('notes')">📋 Copy</button>
+                        <button class="action-btn" onclick="downloadContent('notes')">💾 Download TXT</button>
+                    </div>
+                </div>
+                <div class="content-box formatted" id="notes-content">{% if results.notes %}{{ results.notes }}{% else %}No notes generated{% endif %}</div>
+            </div>
+
+            <div class="tab-pane{% if active_quiz %} active{% endif %}" id="quiz-pane">
+                <div class="content-header">
+                    <h2>Quiz</h2>
+                </div>
+                <div class="quiz-container" id="quiz-content"></div>
+                <div class="quiz-result" id="quiz-result" style="display: none;"></div>
+            </div>
+
+            <div class="tab-pane{% if active_flashcards %} active{% endif %}" id="flashcards-pane">
+                <div class="content-header">
+                    <h2>Flashcards</h2>
+                </div>
+                <div class="flashcard-container">
+                    <div class="flashcard" id="flashcard" onclick="flipCard()">
+                        <div class="flashcard-front" id="flashcard-front"></div>
+                        <div class="flashcard-back" id="flashcard-back"></div>
+                    </div>
+                    <div class="flashcard-nav">
+                        <button class="nav-btn" onclick="prevCard()">← Previous</button>
+                        <span class="card-counter" id="card-counter">1 / 15</span>
+                        <button class="nav-btn" onclick="nextCard()">Next →</button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="tab-pane{% if active_ppt %} active{% endif %}" id="ppt-pane">
+                <div class="content-header">
+                    <h2>PPT Outline</h2>
+                    <div class="action-buttons">
+                        <button class="action-btn" onclick="copyContent('ppt')">📋 Copy to Clipboard</button>
+                    </div>
+                </div>
+                <div class="content-box formatted" id="ppt-content">{% if results.ppt %}{{ results.ppt }}{% else %}No PPT outline generated{% endif %}</div>
+            </div>
+
+            <div class="tab-pane{% if active_concepts %} active{% endif %}" id="concepts-pane">
+                <div class="content-header">
+                    <h2>Key Concepts</h2>
+                    <div class="action-buttons">
+                        <button class="action-btn" onclick="copyContent('concepts')">📋 Copy</button>
+                    </div>
+                </div>
+                <div class="glossary" id="concepts-content">{% if results.concepts %}{{ results.concepts }}{% else %}No concepts generated{% endif %}</div>
+            </div>
+        </div>
+    </div>
+
+{% if 'quiz' in features and results.quiz %}
+<div id="data-quiz" style="display:none">{{ results.quiz | tojson | safe }}</div>
+{% endif %}
+{% if 'flashcards' in features and results.flashcards %}
+<div id="data-flashcards" style="display:none">{{ results.flashcards | tojson | safe }}</div>
+{% endif %}
+
+    <script>
+        let currentCard = 0;
+        let resultsData = {};
+        
+        document.addEventListener('DOMContentLoaded', function() {
+            initTabs();
+            // Text content already rendered by Jinja2 server-side
+            // Only populate quiz and flashcards via JavaScript
+            const quizEl = document.getElementById('data-quiz');
+            if (quizEl && quizEl.textContent.trim()) {
+                try {
+                    displayQuiz(JSON.parse(quizEl.textContent));
+                } catch(e) { console.error('Quiz error:', e); }
+            }
+            
+            const flashcardsEl = document.getElementById('data-flashcards');
+            if (flashcardsEl && flashcardsEl.textContent.trim()) {
+                try {
+                    displayFlashcards(JSON.parse(flashcardsEl.textContent));
+                } catch(e) { console.error('Flashcards error:', e); }
+            }
+        });
+
+        function initTabs() {
+            const tabs = document.querySelectorAll('.tab-btn');
+            const panes = document.querySelectorAll('.tab-pane');
+            
+            tabs.forEach(tab => {
+                tab.addEventListener('click', () => {
+                    tabs.forEach(t => t.classList.remove('active'));
+                    panes.forEach(p => p.classList.remove('active'));
+                    
+                    tab.classList.add('active');
+                    document.getElementById(tab.dataset.tab + '-pane').classList.add('active');
+                });
+            });
+        }
+            }
+        }
+
+        function formatParagraphs(text) {
+            return text.split('\n\n').map(p => `<p>${p}</p>`).join('');
+        }
+
+        function formatNotes(text) {
+            let html = text
+                .replace(/^### (.+)$/gm, '<h3>$1</h3>')
+                .replace(/^## (.+)$/gm, '<h2>$1</h2>')
+                .replace(/^# (.+)$/gm, '<h1>$1</h1>')
+                .replace(/^- (.+)$/gm, '<li>$1</li>')
+                .replace(/^\d+\. (.+)$/gm, '<li>$1</li>');
+            
+            html = html.replace(/(<li>.*<\/li>)/s, '<ul>$1</ul>');
+            return html;
+        }
+
+        function displayQuiz(questions) {
+            const container = document.getElementById('quiz-content');
+            let html = '';
+            
+            questions.forEach((q, index) => {
+                html += `<div class="quiz-question" data-correct="${q.correct}">
+                    <p class="question-text"><strong>Q${index + 1}:</strong> ${q.question}</p>
+                    <div class="options">`;
+                
+                q.options.forEach(opt => {
+                    html += `<button class="option-btn" onclick="checkAnswer(this, '${opt[0]}', '${q.correct}')">
+                        ${opt[0]}) ${opt[1]}
+                    </button>`;
+                });
+                
+                html += `</div></div>`;
+            });
+            
+            container.innerHTML = html;
+        }
+
+        let correctCount = 0;
+        let answeredCount = 0;
+
+        function checkAnswer(btn, selected, correct) {
+            const questionDiv = btn.closest('.quiz-question');
+            const options = questionDiv.querySelectorAll('.option-btn');
+            
+            if (questionDiv.classList.contains('answered')) return;
+            
+            questionDiv.classList.add('answered');
+            answeredCount++;
+            
+            options.forEach(opt => {
+                opt.disabled = true;
+                if (opt.textContent.trim().startsWith(correct)) {
+                    opt.classList.add('correct');
+                }
+            });
+            
+            if (selected === correct) {
+                btn.classList.add('correct-answer');
+                correctCount++;
+            } else {
+                btn.classList.add('wrong-answer');
+            }
+            
+            if (answeredCount === document.querySelectorAll('.quiz-question').length) {
+                showQuizResult();
+            }
+        }
+
+        function showQuizResult() {
+            const resultDiv = document.getElementById('quiz-result');
+            const total = document.querySelectorAll('.quiz-question').length;
+            const percentage = Math.round((correctCount / total) * 100);
+            
+            resultDiv.innerHTML = `<h3>Quiz Complete!</h3>
+                <p class="score">Score: ${correctCount} / ${total} (${percentage}%)</p>
+                <button class="action-btn" onclick="resetQuiz()">Try Again</button>`;
+            
+            resultDiv.style.display = 'block';
+        }
+
+        function resetQuiz() {
+            correctCount = 0;
+            answeredCount = 0;
+            document.getElementById('quiz-result').style.display = 'none';
+            
+            document.querySelectorAll('.quiz-question').forEach(q => {
+                q.classList.remove('answered');
+                q.querySelectorAll('.option-btn').forEach(btn => {
+                    btn.classList.remove('correct', 'wrong-answer', 'correct-answer');
+                    btn.disabled = false;
+                });
+            });
+        }
+
+        function displayFlashcards(flashcards) {
+            window.flashcardsData = flashcards;
+            updateFlashcard();
+        }
+
+        function updateFlashcard() {
+            const cards = window.flashcardsData;
+            if (!cards || cards.length === 0) return;
+            
+            document.getElementById('flashcard-front').textContent = cards[currentCard].question;
+            document.getElementById('flashcard-back').textContent = cards[currentCard].answer;
+            document.getElementById('card-counter').textContent = `${currentCard + 1} / ${cards.length}`;
+            document.getElementById('flashcard').classList.remove('flipped');
+        }
+
+        function flipCard() {
+            document.getElementById('flashcard').classList.toggle('flipped');
+        }
+
+        function prevCard() {
+            if (currentCard > 0) {
+                currentCard--;
+                updateFlashcard();
+            }
+        }
+
+        function nextCard() {
+            if (currentCard < window.flashcardsData.length - 1) {
+                currentCard++;
+                updateFlashcard();
+            }
+        }
+
+        function formatGlossary(text) {
+            const lines = text.split('\n');
+            let html = '<dl class="glossary-list">';
+            
+            lines.forEach(line => {
+                if (line.includes(':')) {
+                    const [term, def] = line.split(':', 1);
+                    html += `<dt>${term.trim()}</dt><dd>${def.trim()}</dd>`;
+                }
+            });
+            
+            html += '</dl>';
+            return html;
+        }
+
+        function copyContent(type) {
+            let text = '';
+            const el = document.getElementById('data-' + type);
+            if (el) {
+                text = el.textContent;
+            } else {
+                const contentEl = document.getElementById(type + '-content');
+                if (contentEl) text = contentEl.textContent;
+            }
+            if (text) {
+                navigator.clipboard.writeText(text).then(() => {
+                    alert('Copied to clipboard!');
+                });
+            }
+        }
+
+        function downloadContent(type) {
+            let text = '';
+            const el = document.getElementById('data-' + type);
+            if (el) {
+                text = el.textContent;
+            } else {
+                const contentEl = document.getElementById(type + '-content');
+                if (contentEl) text = contentEl.textContent;
+            }
+            if (text) {
+                const blob = new Blob([text], { type: 'text/plain' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `${type}.txt`;
+                a.click();
+                URL.revokeObjectURL(url);
+            }
+        }
+    </script>
+</body>
+</html>
